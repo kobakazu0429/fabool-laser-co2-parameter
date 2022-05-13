@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FABOOL Laser CO2 パラメーター出し</title>
+    <style>
+      .grid {
+        display: grid;
+        grid-column-gap: 0px;
+        grid-row-gap: 0px;
+      }
+
+      .col-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .row-1 {
+        grid-template-rows: 1fr;
+      }
+
+      .row-3 {
+        grid-template-rows: repeat(3, 1fr);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>FABOOL Laser CO2 パラメーター出し</h1>
+    <div class="grid col-2 row-3">
+      <div class="grid col-2 row-1">
+        <div><span>間隔</span></div>
+        <div><input type="number" id="margin" value="10" />mm</div>
+      </div>
+      <div class="grid col-2 row-1">
+        <div><span>回数</span></div>
+        <div><input type="number" id="times" value="3" />回</div>
+      </div>
+      <div class="grid col-2 row-1">
+        <div><span>サイズ</span></div>
+        <div><input type="number" id="size" value="30" />mm</div>
+      </div>
+      <div class="grid col-2 row-1"></div>
+
+      <div class="grid col-2 row-3">
+        <div>
+          <span>最小出力</span>
+        </div>
+        <div><input type="number" id="min_power" value="40" />%</div>
+        <div>
+          <span>最大出力</span>
+        </div>
+        <div><input type="number" id="max_power" value="60" />%</div>
+        <div>
+          <span>インターバル</span>
+        </div>
+        <div><input type="number" id="power_interval" value="10" />%</div>
+      </div>
+      <div class="grid col-2 row-3">
+        <div>
+          <span>最小スピード</span>
+        </div>
+        <div><input type="number" id="min_speed" value="400" />mm / min</div>
+        <div>
+          <span>最大スピード</span>
+        </div>
+        <div><input type="number" id="max_speed" value="1400" />mm / min</div>
+        <div>
+          <span>インターバル</span>
+        </div>
+        <div>
+          <input type="number" id="speed_interval" value="200" />mm / min
+        </div>
+      </div>
+      <div>
+        <a id="dl" href="#" class="inactive">ダウンロードする</a>
+      </div>
+    </div>
+
+    <script>
+      // modify from: https://github.com/angus-c/just/blob/master/packages/array-range/index.js
+      // include stop value
+      /*
+        range(0, 20, 5) // [0, 5, 10, 15, 20]
+      */
+
+      function range(start, stop, step) {
+        if (start != null && typeof start != "number") {
+          throw new Error("start must be a number or null");
+        }
+        if (stop != null && typeof stop != "number") {
+          throw new Error("stop must be a number or null");
+        }
+        if (step != null && typeof step != "number") {
+          throw new Error("step must be a number or null");
+        }
+        if (stop == null) {
+          stop = start || 0;
+          start = 0;
+        }
+        if (step == null) {
+          step = stop > start ? 1 : -1;
+        }
+        var toReturn = [];
+        var increasing = start <= stop; //← here’s the change
+        for (; increasing ? start <= stop : start > stop; start += step) {
+          toReturn.push(start);
+        }
+        return toReturn;
+      }
+    </script>
+    <script>
+      function genId({ power, speed }) {
+        return `${power}-${speed}`;
+      }
+
+      function genSymbol({ power, speed, times, id }) {
+        const symbol = `
+        <symbol times="${times}" rasterDpi="254" enable="1" imagedata-type="vectorStroke" laserPower="${power}" headSpeed="${speed}" id="${id}" name="四角形" hatch="horizontal(0.50)">
+          <g>
+           <path stroke="#567193" d="M0,0L100,0L100,100L0,100L0,0" fill="none"/>
+          </g>
+          </symbol>
+        `.trim();
+        return symbol;
+      }
+
+      // size's unit is cm
+      function genUse({ id, left, top, size }) {
+        const use = `<use rotatedAngle="0" transform="matrix(${size},0,0,${size},${left},${top})" xlink:href="#${id}"/>`;
+        return use;
+      }
+
+      function genSvg({ powers, speeds }) {
+        const margin = document.getElementById("margin").valueAsNumber;
+        const times = document.getElementById("times").valueAsNumber;
+        const size = document.getElementById("size").valueAsNumber;
+
+        const data = `
+        <?xml version="1.0" encoding="utf-8"?>
+        <project updated="2022/05/13 16:14:08" version="1.0" name="untitled" created="2022/05/13 16:13:40">
+         <machine laser="FABOOL_CO2L_FDS" type="FaboolLaserDS"/>
+         <settings>
+          <workarea width="1050" height="630"/>
+          <driverPower y="980" x="400"/>
+         </settings>
+         <svg y="0px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" xml:space="preserve" version="1.2" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px">
+          <defs>
+           ${powers
+             .map((power) => {
+               return speeds.map((speed) => {
+                 return genSymbol({
+                   power,
+                   speed,
+                   times,
+                   id: genId({ power, speed }),
+                 });
+               });
+             })
+             .flat()
+             .join("\n")}
+          </defs>
+          ${powers
+            .map((power, row) => {
+              return speeds.map((speed, column) => {
+                return genUse({
+                  id: genId({ power, speed }),
+                  left: row * size + margin * (row + 1),
+                  top: column * size + margin * (column + 1),
+                  size: size / 100,
+                });
+              });
+            })
+            .flat()
+            .join("\n")}
+         </svg>
+        </project>
+        `.trim();
+        return data;
+      }
+    </script>
+    <script>
+      function handleDownload(filename, content) {
+        const blob = new Blob([content]);
+        const url = URL.createObjectURL(blob);
+        const el = document.getElementById("dl");
+        el.href = url;
+        el.download = filename;
+        el.click();
+      }
+    </script>
+    <script>
+      const dlButtonEl = document.getElementById("dl");
+
+      dlButtonEl.addEventListener("click", () => {
+        const powers = range(
+          document.getElementById("min_power").valueAsNumber,
+          document.getElementById("max_power").valueAsNumber,
+          document.getElementById("power_interval").valueAsNumber
+        );
+        const speeds = range(
+          document.getElementById("min_speed").valueAsNumber,
+          document.getElementById("max_speed").valueAsNumber,
+          document.getElementById("speed_interval").valueAsNumber
+        );
+
+        const data = genSvg({ powers, speeds });
+
+        handleDownload("FABOOLLaseeDS_Cut_Parameter.scpj", data);
+      });
+    </script>
+  </body>
+</html>
