@@ -77,6 +77,8 @@
       </div>
     </div>
 
+    <script src="https://unpkg.com/prettier@2.6.2/standalone.js"></script>
+    <script src="https://unpkg.com/prettier@2.6.2/parser-html.js"></script>
     <script>
       // modify from: https://github.com/angus-c/just/blob/master/packages/array-range/index.js
       // include stop value
@@ -110,11 +112,11 @@
       }
     </script>
     <script>
-      function genId({ power, speed }) {
-        return `${power}-${speed}`;
+      function genId({ prefix, power = "", speed = "" }) {
+        return `${prefix}-${power}-${speed}`;
       }
 
-      function genSymbol({ power, speed, times, id }) {
+      function genRectSymbol({ power, speed, times, id }) {
         const symbol = `
         <symbol times="${times}" rasterDpi="254" enable="1" imagedata-type="vectorStroke" laserPower="${power}" headSpeed="${speed}" id="${id}" name="四角形" hatch="horizontal(0.50)">
           <g>
@@ -125,9 +127,20 @@
         return symbol;
       }
 
+      function genTextSymbol({ power, speed, times, id, text, hatching }) {
+        const symbol = `
+        <symbol times="${times}" rasterDpi="254" enable="1" imagedata-type="text" laserPower="${power}" headSpeed="${speed}" id="${id}" name="" hatch="horizontal(${hatching})">
+          <g>
+           <text y="12" font-family="Arial" stroke="#333333" font-style="Regular" font-weight="Regular" font-size="12" x="0">${text}</text>
+          </g>
+        </symbol>
+        `.trim();
+        return symbol;
+      }
+
       // size's unit is cm
-      function genUse({ id, left, top, size }) {
-        const use = `<use rotatedAngle="0" transform="matrix(${size},0,0,${size},${left},${top})" xlink:href="#${id}"/>`;
+      function genUse({ id, left, top, size, y = 0 }) {
+        const use = `<use rotatedAngle="0" y="${y}" transform="matrix(${size},0,0,${size},${left},${top})" xlink:href="#${id}"/>`;
         return use;
       }
 
@@ -149,30 +162,80 @@
            ${powers
              .map((power) => {
                return speeds.map((speed) => {
-                 return genSymbol({
+                 return genRectSymbol({
                    power,
                    speed,
                    times,
-                   id: genId({ power, speed }),
+                   id: genId({ prefix: "rect", power, speed }),
                  });
                });
              })
              .flat()
              .join("\n")}
+
+             ${powers
+               .map((power, row) => {
+                 return genTextSymbol({
+                   id: genId({ prefix: "text", power }),
+                   power: 60,
+                   speed: 1200,
+                   times: 1,
+                   y: -12,
+                   hatching: 0.1,
+                   text: power,
+                 });
+               })
+               .join("\n")}
+            ${speeds
+              .map((speed, column) => {
+                return genTextSymbol({
+                  id: genId({ prefix: "text", speed }),
+                  power: 60,
+                  speed: 1200,
+                  times: 1,
+                  y: -12,
+                  hatching: 0.1,
+                  text: speed,
+                });
+              })
+              .join("\n")}
           </defs>
           ${powers
             .map((power, row) => {
               return speeds.map((speed, column) => {
                 return genUse({
-                  id: genId({ power, speed }),
-                  left: row * size + margin * (row + 1),
-                  top: column * size + margin * (column + 1),
+                  id: genId({ prefix: "rect", power, speed }),
+                  left: row * size + margin * (row + 1) + 40,
+                  top: column * size + margin * (column + 1) + 20,
                   size: size / 100,
                 });
               });
             })
             .flat()
             .join("\n")}
+
+            ${powers
+              .map((power, row) => {
+                return genUse({
+                  id: genId({ prefix: "text", power }),
+                  left: row * size + margin * (row + 1) + 47,
+                  top: 20,
+                  size: 1,
+                  y: -12,
+                });
+              })
+              .join("\n")}
+            ${speeds
+              .map((speed, column) => {
+                return genUse({
+                  id: genId({ prefix: "text", speed }),
+                  left: 10,
+                  top: column * size + margin * (column + 1) + 40,
+                  size: 1,
+                  y: -12,
+                });
+              })
+              .join("\n")}
          </svg>
         </project>
         `.trim();
@@ -204,9 +267,19 @@
           document.getElementById("speed_interval").valueAsNumber
         );
 
-        const data = genSvg({ powers, speeds });
+        const raw = genSvg({ powers, speeds });
+        const formatted = prettier.format(raw, {
+          parser: "html",
+          plugins: [prettierPlugins.html],
 
-        handleDownload("FABOOLLaseeDS_Cut_Parameter.scpj", data);
+          printWidth: 500,
+          tabWidth: 2,
+          useTabs: false,
+          singleQuote: false,
+          bracketSameLine: false,
+        });
+
+        handleDownload("FABOOLLaseeDS_Cut_Parameter.scpj", formatted);
       });
     </script>
   </body>
