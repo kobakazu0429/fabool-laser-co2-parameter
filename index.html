@@ -12,6 +12,10 @@
         grid-row-gap: 0px;
       }
 
+      .row-gap {
+        grid-row-gap: 30px;
+      }
+
       .col-2 {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -27,20 +31,24 @@
   </head>
   <body>
     <h1>FABOOL Laser CO2 パラメーター出し</h1>
-    <div class="grid col-2 row-3">
-      <div class="grid col-2 row-1">
+    <div class="grid col-2 row-gap">
+      <div class="grid col-2 row-3">
         <div><span>間隔</span></div>
         <div><input type="number" id="margin" value="10" />mm</div>
-      </div>
-      <div class="grid col-2 row-1">
         <div><span>回数</span></div>
         <div><input type="number" id="times" value="3" />回</div>
-      </div>
-      <div class="grid col-2 row-1">
         <div><span>サイズ</span></div>
-        <div><input type="number" id="size" value="30" />mm</div>
+        <div><input type="number" id="size" value="20" />mm</div>
       </div>
-      <div class="grid col-2 row-1"></div>
+
+      <div class="grid col-2 row-3">
+        <div><span>フォントサイズ</span></div>
+        <div><input type="number" id="font_size" value="15" />pt</div>
+        <div><span>テキスト出力</span></div>
+        <div><input type="number" id="font_power" value="30" />%</div>
+        <div><span>テキストスピード</span></div>
+        <div><input type="number" id="font_speed" value="1200" />mm / min</div>
+      </div>
 
       <div class="grid col-2 row-3">
         <div>
@@ -56,6 +64,7 @@
         </div>
         <div><input type="number" id="power_interval" value="10" />%</div>
       </div>
+
       <div class="grid col-2 row-3">
         <div>
           <span>最小スピード</span>
@@ -72,6 +81,7 @@
           <input type="number" id="speed_interval" value="200" />mm / min
         </div>
       </div>
+
       <div>
         <a id="dl" href="#" class="inactive">ダウンロードする</a>
       </div>
@@ -87,13 +97,13 @@
       */
 
       function range(start, stop, step) {
-        if (start != null && typeof start != "number") {
+        if (start != null && typeof start !== "number") {
           throw new Error("start must be a number or null");
         }
-        if (stop != null && typeof stop != "number") {
+        if (stop != null && typeof stop !== "number") {
           throw new Error("stop must be a number or null");
         }
-        if (step != null && typeof step != "number") {
+        if (step != null && typeof step !== "number") {
           throw new Error("step must be a number or null");
         }
         if (stop == null) {
@@ -112,8 +122,16 @@
       }
     </script>
     <script>
-      function genId({ prefix, power = "", speed = "" }) {
-        return `${prefix}-${power}-${speed}`;
+      function ptToTextHeightMm(pt) {
+        return 0.71875 * pt;
+      }
+      function ptToTextWidthMm(pt) {
+        return 0.4951 * pt;
+      }
+    </script>
+    <script>
+      function genId({ prefix, power, speed }) {
+        return [prefix, power, speed].filter(Boolean).join("-");
       }
 
       function genRectSymbol({ power, speed, times, id }) {
@@ -127,25 +145,46 @@
         return symbol;
       }
 
-      function genTextSymbol({ power, speed, times, id, text, hatching }) {
+      /**
+       * @param {Object} data
+       * @param {string} data.fontSize
+       */
+      function genTextSymbol({
+        power,
+        speed,
+        times,
+        id,
+        text,
+        hatching,
+        fontSize,
+      }) {
         const symbol = `
         <symbol times="${times}" rasterDpi="254" enable="1" imagedata-type="text" laserPower="${power}" headSpeed="${speed}" id="${id}" name="" hatch="horizontal(${hatching})">
           <g>
-           <text y="12" font-family="Arial" stroke="#333333" font-style="Regular" font-weight="Regular" font-size="12" x="0">${text}</text>
+           <text x="0" y="${fontSize}" font-family="Arial" stroke="#333333" font-style="Regular" font-weight="Regular" font-size="${fontSize}">${text}</text>
           </g>
         </symbol>
         `.trim();
         return symbol;
       }
 
-      // size's unit is cm
+      /**
+       * size: [cm]
+       */
       function genUse({ id, left, top, size, y = 0 }) {
         const use = `<use rotatedAngle="0" y="${y}" transform="matrix(${size},0,0,${size},${left},${top})" xlink:href="#${id}"/>`;
         return use;
       }
 
       function genSvg({ powers, speeds }) {
+        const fontPower = document.getElementById("font_power").valueAsNumber;
+        const fontSpeed = document.getElementById("font_speed").valueAsNumber;
+        const fontSizeAsPt = document.getElementById("font_size").valueAsNumber;
+
         const margin = document.getElementById("margin").valueAsNumber;
+        const leftMargin = margin + ptToTextWidthMm(fontSizeAsPt) * 4 + margin;
+        const topMargin = margin + ptToTextHeightMm(fontSizeAsPt) + margin;
+
         const times = document.getElementById("times").valueAsNumber;
         const size = document.getElementById("size").valueAsNumber;
 
@@ -177,12 +216,13 @@
                .map((power, row) => {
                  return genTextSymbol({
                    id: genId({ prefix: "text", power }),
-                   power: 60,
-                   speed: 1200,
+                   power: fontPower,
+                   speed: fontSpeed,
                    times: 1,
-                   y: -12,
+                   y: -1 * fontSizeAsPt,
                    hatching: 0.1,
                    text: power,
+                   fontSize: fontSizeAsPt,
                  });
                })
                .join("\n")}
@@ -190,12 +230,13 @@
               .map((speed, column) => {
                 return genTextSymbol({
                   id: genId({ prefix: "text", speed }),
-                  power: 60,
-                  speed: 1200,
+                  power: fontPower,
+                  speed: fontSpeed,
                   times: 1,
-                  y: -12,
+                  y: -1 * fontSizeAsPt,
                   hatching: 0.1,
                   text: speed,
+                  fontSize: fontSizeAsPt,
                 });
               })
               .join("\n")}
@@ -205,8 +246,8 @@
               return speeds.map((speed, column) => {
                 return genUse({
                   id: genId({ prefix: "rect", power, speed }),
-                  left: row * size + margin * (row + 1) + 40,
-                  top: column * size + margin * (column + 1) + 20,
+                  left: (size + margin) * row + leftMargin,
+                  top: (size + margin) * column + topMargin,
                   size: size / 100,
                 });
               });
@@ -218,10 +259,14 @@
               .map((power, row) => {
                 return genUse({
                   id: genId({ prefix: "text", power }),
-                  left: row * size + margin * (row + 1) + 47,
-                  top: 20,
+                  left:
+                    (size + margin) * row +
+                    leftMargin +
+                    size / 2 -
+                    ptToTextWidthMm(fontSizeAsPt),
+                  top: ptToTextHeightMm(fontSizeAsPt) + margin,
                   size: 1,
-                  y: -12,
+                  y: -1 * fontSizeAsPt,
                 });
               })
               .join("\n")}
@@ -229,10 +274,14 @@
               .map((speed, column) => {
                 return genUse({
                   id: genId({ prefix: "text", speed }),
-                  left: 10,
-                  top: column * size + margin * (column + 1) + 40,
+                  left: margin,
+                  top:
+                    (size + margin) * column +
+                    topMargin +
+                    size / 2 +
+                    ptToTextHeightMm(fontSizeAsPt) / 2,
                   size: 1,
-                  y: -12,
+                  y: -1 * fontSizeAsPt,
                 });
               })
               .join("\n")}
@@ -249,7 +298,6 @@
         const el = document.getElementById("dl");
         el.href = url;
         el.download = filename;
-        el.click();
       }
     </script>
     <script>
