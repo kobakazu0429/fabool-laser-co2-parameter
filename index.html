@@ -31,6 +31,11 @@
   </head>
   <body>
     <h1>FABOOL Laser CO2 パラメーター出し</h1>
+    <p>出力が強い・スピードが遅いなどで焦げたり燃える場合があります。</p>
+    <p>
+      本サイトの使用は使用者の自己責任であることを承知の上でご利用ください。
+    </p>
+    <hr />
     <div class="grid col-2 row-gap">
       <div class="grid col-2 row-3">
         <div><span>間隔</span></div>
@@ -86,6 +91,15 @@
         <a id="dl" href="#" class="inactive">ダウンロードする</a>
       </div>
     </div>
+
+    <hr />
+
+    <h2>プレビュー</h2>
+    <p>
+      実際とは異なる場合があります。SmartDIYs Creator
+      等できちんと確認した上で使用してください。
+    </p>
+    <div id="preview"></div>
 
     <script src="https://unpkg.com/prettier@2.6.2/standalone.js"></script>
     <script src="https://unpkg.com/prettier@2.6.2/parser-html.js"></script>
@@ -301,18 +315,23 @@
       }
     </script>
     <script>
-      const dlButtonEl = document.getElementById("dl");
+      const minPower = document.getElementById("min_power");
+      const maxPower = document.getElementById("max_power");
+      const powerInterval = document.getElementById("power_interval");
+      const minSpeed = document.getElementById("min_speed");
+      const maxSpeed = document.getElementById("max_speed");
+      const speedInterval = document.getElementById("speed_interval");
 
-      dlButtonEl.addEventListener("click", () => {
+      function generate() {
         const powers = range(
-          document.getElementById("min_power").valueAsNumber,
-          document.getElementById("max_power").valueAsNumber,
-          document.getElementById("power_interval").valueAsNumber
+          minPower.valueAsNumber,
+          maxPower.valueAsNumber,
+          powerInterval.valueAsNumber
         );
         const speeds = range(
-          document.getElementById("min_speed").valueAsNumber,
-          document.getElementById("max_speed").valueAsNumber,
-          document.getElementById("speed_interval").valueAsNumber
+          minSpeed.valueAsNumber,
+          maxSpeed.valueAsNumber,
+          speedInterval.valueAsNumber
         );
 
         const raw = genSvg({ powers, speeds });
@@ -326,9 +345,26 @@
           singleQuote: false,
           bracketSameLine: false,
         });
+        return formatted;
+      }
 
-        handleDownload("FABOOLLaseeDS_Cut_Parameter.scpj", formatted);
+      const previewEl = document.getElementById("preview");
+      function preview(data) {
+        previewEl.innerHTML = generate();
+      }
+
+      document.getElementById("font_size").addEventListener("input", preview);
+      document.getElementById("margin").addEventListener("input", preview);
+      document.getElementById("size").addEventListener("input", preview);
+
+      const dlButtonEl = document.getElementById("dl");
+
+      dlButtonEl.addEventListener("click", () => {
+        const data = generate();
+        handleDownload("FABOOLLaseeDS_Cut_Parameter.scpj", data);
       });
+
+      preview();
     </script>
   </body>
 </html>
