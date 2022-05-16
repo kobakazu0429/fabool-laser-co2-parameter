@@ -353,6 +353,12 @@
         previewEl.innerHTML = generate();
       }
 
+      minPower.addEventListener("input", preview);
+      maxPower.addEventListener("input", preview);
+      powerInterval.addEventListener("input", preview);
+      minSpeed.addEventListener("input", preview);
+      maxSpeed.addEventListener("input", preview);
+      speedInterval.addEventListener("input", preview);
       document.getElementById("font_size").addEventListener("input", preview);
       document.getElementById("margin").addEventListener("input", preview);
       document.getElementById("size").addEventListener("input", preview);
